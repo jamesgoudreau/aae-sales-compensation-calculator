@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAE Sales Compensation Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 900px; 
+            margin: auto; 
+            color: #333;
+        }
+        h2 { text-align: center; }
+        .slider-container { margin: 30px 0; text-align: center; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .revenue-label { font-size: 24px; font-weight: bold; margin-top: 10px; }
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 15px; 
+            margin-bottom: 30px; 
+        }
+        .metric-card { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            border: 1px solid #dee2e6;
+        }
+        .metric-card h3 { margin: 0 0 10px 0; font-size: 14px; color: #6c757d; text-transform: uppercase; }
+        .metric-card p { margin: 0; font-size: 22px; font-weight: bold; }
+        .highlight { color: #0d6efd; }
+    </style>
+</head>
+<body>
+
+    <h2>AAE Channel Compensation Model</h2>
+    
+    <div class="slider-container">
+        <label for="revenueSlider">Move slider to adjust Annual Billed Revenue</label>
+        <input type="range" id="revenueSlider" min="0" max="800000" step="5000" value="300000">
+        <div class="revenue-label">Annual Billed Revenue: $<span id="revenueDisplay">300,000</span></div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <h3>Base Salary</h3>
+            <p id="baseDisplay">$52,000</p>
+        </div>
+        <div class="metric-card">
+            <h3>Commission (10%)</h3>
+            <p id="commDisplay">$30,000</p>
+        </div>
+        <div class="metric-card">
+            <h3>Quarterly Bonus</h3>
+            <p id="bonusDisplay">$28,000</p>
+        </div>
+        <div class="metric-card">
+            <h3>Total Compensation</h3>
+            <p id="totalDisplay" class="highlight">$110,000</p>
+        </div>
+        <div class="metric-card">
+            <h3>Total Cost of Sale</h3>
+            <p id="tcosDisplay">36.7%</p>
+        </div>
+        <div class="metric-card">
+            <h3>Commission % of Sale</h3>
+            <p id="varcosDisplay">19.3%</p>
+        </div>
+    </div>
+
+    <canvas id="compChart"></canvas>
+
+    <script>
+        function getBonus(revenue) {
+            if (revenue < 150000) return 0;
+            if (revenue < 225000) return 8000;
+            if (revenue < 300000) return 16000;
+            if (revenue < 375000) return 28000;
+            return 40000;
+        }
+
+        const ctx = document.getElementById('compChart').getContext('2d');
+        const revPoints = [];
+        const basePoints = [];
+        const commPoints = [];
+        const bonusPoints = [];
+
+        for (let r = 0; r <= 800000; r += 5000) {
+            revPoints.push(r);
+            basePoints.push(52000);
+            commPoints.push(r * 0.10);
+            bonusPoints.push(getBonus(r));
+        }
+
+        const compChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: revPoints,
+                datasets: [
+                    {
+                        label: 'Base Salary',
+                        data: basePoints,
+                        borderColor: '#6c757d',
+                        backgroundColor: 'rgba(108, 117, 125, 0.2)',
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Commission',
+                        data: commPoints,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Bonus',
+                        data: bonusPoints,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                        fill: true,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Billed Revenue ($)' },
+                        ticks: {
+                            callback: function(value, index) {
+                                return '$' + (revPoints[index] / 1000) + 'k';
+                            }
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        title: { display: true, text: 'Total Earnings ($)' }
+                    }
+                }
+            }
+        });
+
+        const slider = document.getElementById('revenueSlider');
+        const revDisp = document.getElementById('revenueDisplay');
+        const baseDisp = document.getElementById('baseDisplay');
+        const commDisp = document.getElementById('commDisplay');
+        const bonusDisp = document.getElementById('bonusDisplay');
+        const totalDisp = document.getElementById('totalDisplay');
+        const tcosDisp = document.getElementById('tcosDisplay');
+        const varcosDisp = document.getElementById('varcosDisplay');
+
+        function updateUI() {
+            const rev = parseInt(slider.value);
+            const base = 52000;
+            const comm = rev * 0.10;
+            const bonus = getBonus(rev);
+            const total = base + comm + bonus;
+            
+            const tcos = rev > 0 ? ((total / rev) * 100).toFixed(1) : 0;
+            const varcos = rev > 0 ? (((comm + bonus) / rev) * 100).toFixed(1) : 0;
+
+            revDisp.innerText = rev.toLocaleString();
+            baseDisp.innerText = '$' + base.toLocaleString();
+            commDisp.innerText = '$' + comm.toLocaleString();
+            bonusDisp.innerText = '$' + bonus.toLocaleString();
+            totalDisp.innerText = '$' + total.toLocaleString();
+            tcosDisp.innerText = tcos + '%';
+            varcosDisp.innerText = varcos + '%';
+        }
+
+        slider.addEventListener('input', updateUI);
+        updateUI();
+    </script>
+</body>
+</html>
