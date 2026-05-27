@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AAE Sales Compensation Calculator</title>
+    <title>Sales Compensation Calculator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { 
@@ -14,7 +14,16 @@
             color: #333;
         }
         h2 { text-align: center; }
-        .slider-container { margin: 30px 0; text-align: center; }
+        .role-selector {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        .role-selector label {
+            margin: 0 15px;
+            cursor: pointer;
+        }
+        .slider-container { margin: 20px 0 30px; text-align: center; }
         input[type="range"] { width: 100%; cursor: pointer; }
         .revenue-label { font-size: 24px; font-weight: bold; margin-top: 10px; }
         .metrics-grid { 
@@ -37,8 +46,17 @@
 </head>
 <body>
 
-    <h2>AAE Channel Compensation Model</h2>
+    <h2>Sales Compensation Model</h2>
     
+    <div class="role-selector">
+        <label>
+            <input type="radio" name="role" value="AAE" checked> AAE Role
+        </label>
+        <label>
+            <input type="radio" name="role" value="AE"> AE Role
+        </label>
+    </div>
+
     <div class="slider-container">
         <label for="revenueSlider">Move slider to adjust Annual Billed Revenue</label>
         <input type="range" id="revenueSlider" min="0" max="800000" step="5000" value="300000">
@@ -51,11 +69,11 @@
             <p id="baseDisplay">$52,000</p>
         </div>
         <div class="metric-card">
-            <h3>Commission (10%)</h3>
+            <h3 id="commLabel">Commission (10%)</h3>
             <p id="commDisplay">$30,000</p>
         </div>
         <div class="metric-card">
-            <h3>Quarterly Bonus</h3>
+            <h3>Annual Bonus</h3>
             <p id="bonusDisplay">$28,000</p>
         </div>
         <div class="metric-card">
@@ -75,30 +93,69 @@
     <canvas id="compChart"></canvas>
 
     <script>
-        function getBonus(revenue) {
-            if (revenue < 150000) return 0;
-            if (revenue < 225000) return 8000;
-            if (revenue < 300000) return 16000;
-            if (revenue < 375000) return 28000;
-            return 40000;
-        }
+        const roles = {
+            AAE: {
+                base: 52000,
+                commissionRate: 0.10,
+                commissionLabel: 'Commission (10%)',
+                maxRevenue: 800000,
+                getBonus: function(revenue) {
+                    if (revenue < 150000) return 0;
+                    if (revenue < 225000) return 8000;
+                    if (revenue < 300000) return 16000;
+                    if (revenue < 375000) return 28000;
+                    return 40000;
+                }
+            },
+            AE: {
+                base: 70000,
+                commissionRate: 0.08,
+                commissionLabel: 'Commission (8%)',
+                maxRevenue: 1000000,
+                getBonus: function(revenue) {
+                    // AE Target Revenue = $450,000
+                    // 50% = 225k, 75% = 337.5k, 100% = 450k, 125% = 562.5k
+                    // Bonus amounts are quarterly, multiplying by 4 for annual
+                    if (revenue < 225000) return 0;
+                    if (revenue < 337500) return 10000; // 2500 * 4
+                    if (revenue < 450000) return 22000; // 5500 * 4
+                    if (revenue < 562500) return 34000; // 8500 * 4
+                    return 50000; // 12500 * 4
+                }
+            }
+        };
+
+        let currentRole = 'AAE';
 
         const ctx = document.getElementById('compChart').getContext('2d');
-        const revPoints = [];
-        const basePoints = [];
-        const commPoints = [];
-        const bonusPoints = [];
+        let compChart;
 
-        for (let r = 0; r <= 800000; r += 5000) {
-            revPoints.push(r);
-            basePoints.push(52000);
-            commPoints.push(r * 0.10);
-            bonusPoints.push(getBonus(r));
-        }
+        const slider = document.getElementById('revenueSlider');
+        const revDisp = document.getElementById('revenueDisplay');
+        const baseDisp = document.getElementById('baseDisplay');
+        const commLabel = document.getElementById('commLabel');
+        const commDisp = document.getElementById('commDisplay');
+        const bonusDisp = document.getElementById('bonusDisplay');
+        const totalDisp = document.getElementById('totalDisplay');
+        const tcosDisp = document.getElementById('tcosDisplay');
+        const varcosDisp = document.getElementById('varcosDisplay');
+        const roleRadios = document.querySelectorAll('input[name="role"]');
 
-        const compChart = new Chart(ctx, {
-            type: 'line',
-            data: {
+        function generateChartData() {
+            const role = roles[currentRole];
+            const revPoints = [];
+            const basePoints = [];
+            const commPoints = [];
+            const bonusPoints = [];
+
+            for (let r = 0; r <= role.maxRevenue; r += 5000) {
+                revPoints.push(r);
+                basePoints.push(role.base);
+                commPoints.push(r * role.commissionRate);
+                bonusPoints.push(role.getBonus(r));
+            }
+
+            return {
                 labels: revPoints,
                 datasets: [
                     {
@@ -126,49 +183,55 @@
                         pointRadius: 0
                     }
                 ]
-            },
-            options: {
-                responsive: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                scales: {
-                    x: {
-                        title: { display: true, text: 'Billed Revenue ($)' },
-                        ticks: {
-                            callback: function(value, index) {
-                                return '$' + (revPoints[index] / 1000) + 'k';
-                            }
-                        }
+            };
+        }
+
+        function initChart() {
+            compChart = new Chart(ctx, {
+                type: 'line',
+                data: generateChartData(),
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
                     },
-                    y: {
-                        stacked: true,
-                        title: { display: true, text: 'Total Earnings ($)' }
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Billed Revenue ($)' },
+                            ticks: {
+                                callback: function(value, index) {
+                                    const labels = compChart.data.labels;
+                                    return '$' + (labels[index] / 1000) + 'k';
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            title: { display: true, text: 'Total Earnings ($)' }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
-        const slider = document.getElementById('revenueSlider');
-        const revDisp = document.getElementById('revenueDisplay');
-        const baseDisp = document.getElementById('baseDisplay');
-        const commDisp = document.getElementById('commDisplay');
-        const bonusDisp = document.getElementById('bonusDisplay');
-        const totalDisp = document.getElementById('totalDisplay');
-        const tcosDisp = document.getElementById('tcosDisplay');
-        const varcosDisp = document.getElementById('varcosDisplay');
+        function updateChart() {
+            compChart.data = generateChartData();
+            compChart.update();
+        }
 
         function updateUI() {
+            const role = roles[currentRole];
             const rev = parseInt(slider.value);
-            const base = 52000;
-            const comm = rev * 0.10;
-            const bonus = getBonus(rev);
+            const base = role.base;
+            const comm = rev * role.commissionRate;
+            const bonus = role.getBonus(rev);
             const total = base + comm + bonus;
             
             const tcos = rev > 0 ? ((total / rev) * 100).toFixed(1) : 0;
             const varcos = rev > 0 ? (((comm + bonus) / rev) * 100).toFixed(1) : 0;
 
+            commLabel.innerText = role.commissionLabel;
             revDisp.innerText = rev.toLocaleString();
             baseDisp.innerText = '$' + base.toLocaleString();
             commDisp.innerText = '$' + comm.toLocaleString();
@@ -179,6 +242,23 @@
         }
 
         slider.addEventListener('input', updateUI);
+
+        roleRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                currentRole = e.target.value;
+                slider.max = roles[currentRole].maxRevenue;
+                
+                // Keep value within new bounds if necessary
+                if (parseInt(slider.value) > slider.max) {
+                    slider.value = slider.max;
+                }
+                
+                updateUI();
+                updateChart();
+            });
+        });
+
+        initChart();
         updateUI();
     </script>
 </body>
