@@ -59,14 +59,14 @@
 
     <div class="slider-container">
         <label for="revenueSlider">Move slider to adjust Annual Billed Revenue</label>
-        <input type="range" id="revenueSlider" min="0" max="800000" step="5000" value="300000">
+        <input type="range" id="revenueSlider" min="0" max="900000" step="5000" value="300000">
         <div class="revenue-label">Annual Billed Revenue: $<span id="revenueDisplay">300,000</span></div>
     </div>
 
     <div class="metrics-grid">
         <div class="metric-card">
             <h3>Base Salary</h3>
-            <p id="baseDisplay">$52,000</p>
+            <p id="baseDisplay">$50,000</p>
         </div>
         <div class="metric-card">
             <h3 id="commLabel">Commission (10%)</h3>
@@ -78,11 +78,11 @@
         </div>
         <div class="metric-card">
             <h3>Total Compensation</h3>
-            <p id="totalDisplay" class="highlight">$110,000</p>
+            <p id="totalDisplay" class="highlight">$108,000</p>
         </div>
         <div class="metric-card">
             <h3>Total Cost of Sale</h3>
-            <p id="tcosDisplay">36.7%</p>
+            <p id="tcosDisplay">36.0%</p>
         </div>
         <div class="metric-card">
             <h3>Commission % of Sale</h3>
@@ -95,32 +95,39 @@
     <script>
         const roles = {
             AAE: {
-                base: 52000,
+                base: 50000,
                 commissionRate: 0.10,
                 commissionLabel: 'Commission (10%)',
-                maxRevenue: 800000,
+                maxRevenue: 900000,
                 getBonus: function(revenue) {
-                    if (revenue < 150000) return 0;
-                    if (revenue < 225000) return 8000;
-                    if (revenue < 300000) return 16000;
-                    if (revenue < 375000) return 28000;
-                    return 40000;
+                    if (revenue < 150000) return 0;       // < 50%
+                    if (revenue < 225000) return 8000;    // 50-74%
+                    if (revenue < 300000) return 16000;   // 75-99%
+                    if (revenue < 318000) return 28000;   // 100-105%
+                    if (revenue < 348000) return 32000;   // 106-115%
+                    if (revenue < 378000) return 37000;   // 116-125%
+                    if (revenue < 450000) return 44000;   // 126-149%
+                    if (revenue < 525000) return 54000;   // 150-174%
+                    if (revenue < 600000) return 66000;   // 175-199%
+                    return 80000;                         // 200%+
                 }
             },
             AE: {
                 base: 70000,
                 commissionRate: 0.08,
                 commissionLabel: 'Commission (8%)',
-                maxRevenue: 1000000,
+                maxRevenue: 1200000,
                 getBonus: function(revenue) {
-                    // AE Target Revenue = $450,000
-                    // 50% = 225k, 75% = 337.5k, 100% = 450k, 125% = 562.5k
-                    // Bonus amounts are quarterly, multiplying by 4 for annual
-                    if (revenue < 225000) return 0;
-                    if (revenue < 337500) return 10000; // 2500 * 4
-                    if (revenue < 450000) return 22000; // 5500 * 4
-                    if (revenue < 562500) return 34000; // 8500 * 4
-                    return 50000; // 12500 * 4
+                    if (revenue < 225000) return 0;       // < 50%
+                    if (revenue < 337500) return 10000;   // 50-74%
+                    if (revenue < 450000) return 22000;   // 75-99%
+                    if (revenue < 477000) return 34000;   // 100-105%
+                    if (revenue < 522000) return 38000;   // 106-115%
+                    if (revenue < 567000) return 44000;   // 116-125%
+                    if (revenue < 675000) return 54000;   // 126-149%
+                    if (revenue < 787500) return 68000;   // 150-174%
+                    if (revenue < 900000) return 82000;   // 175-199%
+                    return 98000;                         // 200%+
                 }
             }
         };
@@ -248,7 +255,6 @@
                 currentRole = e.target.value;
                 slider.max = roles[currentRole].maxRevenue;
                 
-                // Keep value within new bounds if necessary
                 if (parseInt(slider.value) > slider.max) {
                     slider.value = slider.max;
                 }
