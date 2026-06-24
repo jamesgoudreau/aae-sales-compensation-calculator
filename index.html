@@ -23,6 +23,21 @@
             margin: 0 15px;
             cursor: pointer;
         }
+        .vancouver-options {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .vancouver-options h4 {
+            margin: 0 0 10px 0;
+        }
+        .vancouver-options label {
+            margin: 0 10px;
+            cursor: pointer;
+        }
         .slider-container { margin: 20px 0 30px; text-align: center; }
         input[type="range"] { width: 100%; cursor: pointer; }
         .revenue-label { font-size: 24px; font-weight: bold; margin-top: 10px; }
@@ -55,6 +70,18 @@
         <label>
             <input type="radio" name="role" value="AE"> AE Role
         </label>
+        <label>
+            <input type="radio" name="role" value="Vancouver_AE"> Vancouver AE
+        </label>
+    </div>
+
+    <div id="vancouver-options" class="vancouver-options">
+        <h4>Target Achievements (Toggle to recalculate bonus)</h4>
+        <label><input type="checkbox" id="q1-bonus" checked> Q1 ($1,000)</label>
+        <label><input type="checkbox" id="q2-bonus" checked> Q2 ($1,500)</label>
+        <label><input type="checkbox" id="q3-bonus" checked> Q3 ($2,000)</label>
+        <label><input type="checkbox" id="q4-bonus" checked> Q4 ($3,000)</label>
+        <label><input type="checkbox" id="annual-bonus" checked> Annual ($2,000)</label>
     </div>
 
     <div class="slider-container">
@@ -73,7 +100,7 @@
             <p id="commDisplay">$30,000</p>
         </div>
         <div class="metric-card">
-            <h3>Annual Bonus</h3>
+            <h3>Bonus</h3>
             <p id="bonusDisplay">$28,000</p>
         </div>
         <div class="metric-card">
@@ -93,6 +120,8 @@
     <canvas id="compChart"></canvas>
 
     <script>
+        const formatCurrency = (val) => '$' + Math.round(val).toLocaleString();
+
         const roles = {
             AAE: {
                 base: 50000,
@@ -129,6 +158,21 @@
                     if (revenue < 900000) return 82000;   // 175-199%
                     return 98000;                         // 200%+
                 }
+            },
+            Vancouver_AE: {
+                base: 80846.35,
+                commissionRate: 21490.80 / 450000,
+                commissionLabel: 'Commission (~4.78%)',
+                maxRevenue: 1200000,
+                getBonus: function(revenue) {
+                    let b = 0;
+                    if (document.getElementById('q1-bonus').checked) b += 1000;
+                    if (document.getElementById('q2-bonus').checked) b += 1500;
+                    if (document.getElementById('q3-bonus').checked) b += 2000;
+                    if (document.getElementById('q4-bonus').checked) b += 3000;
+                    if (document.getElementById('annual-bonus').checked) b += 2000;
+                    return b;
+                }
             }
         };
 
@@ -147,6 +191,8 @@
         const tcosDisp = document.getElementById('tcosDisplay');
         const varcosDisp = document.getElementById('varcosDisplay');
         const roleRadios = document.querySelectorAll('input[name="role"]');
+        const vancouverOptionsDiv = document.getElementById('vancouver-options');
+        const vancouverCheckboxes = document.querySelectorAll('#vancouver-options input[type="checkbox"]');
 
         function generateChartData() {
             const role = roles[currentRole];
@@ -240,21 +286,34 @@
 
             commLabel.innerText = role.commissionLabel;
             revDisp.innerText = rev.toLocaleString();
-            baseDisp.innerText = '$' + base.toLocaleString();
-            commDisp.innerText = '$' + comm.toLocaleString();
-            bonusDisp.innerText = '$' + bonus.toLocaleString();
-            totalDisp.innerText = '$' + total.toLocaleString();
+            baseDisp.innerText = formatCurrency(base);
+            commDisp.innerText = formatCurrency(comm);
+            bonusDisp.innerText = formatCurrency(bonus);
+            totalDisp.innerText = formatCurrency(total);
             tcosDisp.innerText = tcos + '%';
             varcosDisp.innerText = varcos + '%';
         }
 
         slider.addEventListener('input', updateUI);
 
+        vancouverCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                updateUI();
+                updateChart();
+            });
+        });
+
         roleRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 currentRole = e.target.value;
                 slider.max = roles[currentRole].maxRevenue;
                 
+                if (currentRole === 'Vancouver_AE') {
+                    vancouverOptionsDiv.style.display = 'block';
+                } else {
+                    vancouverOptionsDiv.style.display = 'none';
+                }
+
                 if (parseInt(slider.value) > slider.max) {
                     slider.value = slider.max;
                 }
